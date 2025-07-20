@@ -12,6 +12,7 @@
 
 ## Struktur Proyek
 
+```
 ├──outready-personal-pack-checker/
      ├── app.py                 # GUI untuk ambil gambar dataset
      ├── requirements.txt       # Semua dependencies Python
@@ -31,3 +32,4 @@
      │   └── assets/            # Contoh gambar deteksi dan visualisasi
      │
      └── README.md              # Penjelasan proyek
+```
