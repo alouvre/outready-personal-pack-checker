@@ -10,23 +10,24 @@
 - Sistem deteksi real-time dengan notifikasi
 
 
-outready-personal-pack-checker/
-│
-├── app.py                 # GUI untuk ambil gambar dataset
-├── requirements.txt       # Semua dependencies Python
-├── dataset/
-│   ├── raw/               # Hasil capture gambar mentah
-│   └── labeled/           # Label hasil dari Label Studio (format COCO/Yolo/XML)
-│
-├── label_studio_config/   # Konfigurasi labeling custom
-│
-├── training/
-│   ├── prepare_dataset.py # Convert dari Label Studio ke format Yolo/COCO
-│   ├── train.py           # Script training object detection model
-│   └── model/             # Folder menyimpan checkpoint model
-│
-├── inference/
-│   ├── detect.py          # Skrip inferensi dari model terlatih
-│   └── assets/            # Contoh gambar deteksi dan visualisasi
-│
-└── README.md              # Penjelasan proyek
+## Struktur Proyek
+
+├──outready-personal-pack-checker/
+     ├── app.py                 # GUI untuk ambil gambar dataset
+     ├── requirements.txt       # Semua dependencies Python
+     ├── dataset/
+     │   ├── raw/               # Hasil capture gambar mentah
+     │   └── labeled/           # Label hasil dari Label Studio (format COCO/Yolo/XML)
+     │
+     ├── label_studio_config/   # Konfigurasi labeling custom
+     │
+     ├── training/
+     │   ├── prepare_dataset.py # Convert dari Label Studio ke format Yolo/COCO
+     │   ├── train.py           # Script training object detection model
+     │   └── model/             # Folder menyimpan checkpoint model
+     │
+     ├── inference/
+     │   ├── detect.py          # Skrip inferensi dari model terlatih
+     │   └── assets/            # Contoh gambar deteksi dan visualisasi
+     │
+     └── README.md              # Penjelasan proyek
