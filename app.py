@@ -50,6 +50,7 @@ class CameraApp:
         self.root.title("OutReady - Capture Image")
         self.build_ui()
         self.update_frame()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     # Bangun UI
     def build_ui(self):
@@ -70,8 +71,6 @@ class CameraApp:
             self.build_camera_id_selector,
             self.build_camera_mode_control,
             self.build_resolution_selector,
-            # Tambahkan fungsi kontrol lainnya di sini:
-            # self.build_device_selector,
         ]
 
         for builder in self.top_feature_builders:
@@ -108,7 +107,7 @@ class CameraApp:
     def build_canvas(self):
         """Bangun area tampilan kamera."""
         self.image_label = ctk.CTkLabel(self.root, text="")
-        self.image_label.pack(pady=10)
+        self.image_label.pack(expand=False, fill="both", pady=10)
 
     def build_buttons(self):
         """Bangun tombol kontrol bawah."""
@@ -116,7 +115,8 @@ class CameraApp:
             self.root,
             text="Take Picture",
             font=("Arial", 14),
-            command=self.capture_image,
+            # command=self.capture_images,
+            command=self.open_capture_popup,
             corner_radius=32,
             height=40,
             width=35
@@ -127,20 +127,23 @@ class CameraApp:
         """Ambil frame dari kamera, olah, dan tampilkan."""
         if self.is_updating and self.cap and self.cap.isOpened():
             ret, frame = self.cap.read()
+            if not ret:
+                messagebox.showerror("Gagal", "Tidak dapat mengambil gambar.")
+                self.is_updating = True
+                return
+
             if ret:
+                # Resize frame ke ukuran canvas tetap
+                resized = cv2.resize(frame, (CANVAS_WIDTH, CANVAS_HEIGHT))
+
                 # Simpan frame terakhir untuk disimpan saat klik tombol
-                processed = self.process_frame(frame)
+                processed = self.process_frame(resized)
                 self.current_frame = processed.copy()
 
-                # Resize frame ke ukuran canvas tetap
-                resized = cv2.resize(processed, (CANVAS_WIDTH, CANVAS_HEIGHT))
-
                 # Convert ke ImageTk
-                frame_rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+                frame_rgb = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
                 img = Image.fromarray(frame_rgb)
                 imgtk = ctk.CTkImage(light_image=img, size=(CANVAS_WIDTH, CANVAS_HEIGHT))
-                self.image_label.configure(image=imgtk)
-                self.image_label.image = imgtk
 
                 self.image_label.configure(image=imgtk)
                 self.image_label.image = imgtk
@@ -157,13 +160,29 @@ class CameraApp:
         brightness = self.brightness_value.get()
         return cv2.convertScaleAbs(frame, alpha=1.0, beta=brightness)
 
-    def capture_image(self):
-        """Simpan frame saat ini ke file .jpg."""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"image_{timestamp}.jpg"
-        path = os.path.join(SAVE_DIR, filename)
-        cv2.imwrite(path, self.current_frame)
-        messagebox.showinfo("Sukses", f"Gambar disimpan di:\n{path}")
+    def capture_images(self, count=1, delay=0.2):
+        """Mengambil sejumlah gambar dengan jeda tertentu untuk kebutuhan dataset burst."""
+        try:
+            save_dir = os.path.join(SAVE_DIR)
+            os.makedirs(save_dir, exist_ok=True)
+
+            for i in range(count):
+                ret, frame = self.cap.read()
+                if not ret:
+                    messagebox.showerror("Gagal", "Tidak dapat mengambil gambar.")
+                    break
+
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"image_{timestamp}.jpg"
+                path = os.path.join(SAVE_DIR, filename)
+
+                cv2.imwrite(path, self.current_frame)
+
+                messagebox.showinfo("[INFO]", "Pengambilan Gambar Berhasil")
+                time.sleep(delay)
+
+        except Exception as e:
+            messagebox.showerror("[ERROR]", f"Terjadi kesalahan saat menyimpan gambar.\n{e}")
 
     # ------------------------------------------------------
     # ----------- Fitur-Fitur Panel Kontrol Atas -----------
@@ -322,6 +341,99 @@ class CameraApp:
         self.brightness_value.set(0)
         self.update_brightness_label(0)
 
+# ------------------------------------------------------
+# ------------------- Pop up Capture -------------------
+# ------------------------------------------------------
+    def open_capture_popup(self):
+        if not self.cap or not self.cap.isOpened():
+            messagebox.showerror(
+                "Kamera Tidak Aktif",
+                "Tidak dapat membuka popup capture karena kamera tidak aktif."
+                )
+            return
+
+        # Pause update frame sementara
+        self.is_updating = False
+
+        popup = ctk.CTkToplevel(self.root)
+        popup.title("Pengaturan Capture Gambar")
+        popup.geometry("640x480")
+        popup.transient(self.root)         # Supaya tetap di depan
+        popup.grab_set()                   # Modal: tidak bisa interaksi jendela utama
+        popup.focus_force()
+
+        # Posisikan di tengah layar utama
+        x = self.root.winfo_x()
+        y = self.root.winfo_y()
+        w = self.root.winfo_width()
+        h = self.root.winfo_height()
+        popup.update_idletasks()
+        pw = popup.winfo_width()
+        ph = popup.winfo_height()
+        popup.geometry(f"+{x + (w - pw)//2}+{y + (h - ph)//2}")
+
+        # ================== UI Elements ===================
+        # Frame utama
+        content = ctk.CTkFrame(popup)
+        content.pack(expand=True, fill="both", padx=20, pady=20)
+
+        # Jumlah burst
+        ctk.CTkLabel(
+            content,
+            text="Jumlah Gambar:",
+            font=("Arial", 12),
+            anchor="w").pack(fill="x", pady=(10, 0), padx=10)
+        count_entry = ctk.CTkEntry(content)
+        count_entry.insert(0, "1")
+        count_entry.pack(fill="x", pady=0, padx=5)
+
+        # Delay antar gambar
+        ctk.CTkLabel(
+            content,
+            text="Delay (detik):",
+            font=("Arial", 12),
+            anchor="w").pack(fill="x", pady=(10, 0), padx=10)
+        delay_entry = ctk.CTkEntry(content)
+        delay_entry.insert(0, "0.2")
+        delay_entry.pack(fill="x", pady=0, padx=10)
+
+        # Tombol konfirmasi
+        def confirm_capture():
+            try:
+                count = max(1, int(count_entry.get()))
+            except ValueError:
+                count = 1
+            try:
+                delay = max(0.0, float(delay_entry.get()))
+            except ValueError:
+                delay = 0.2
+
+            if not count:
+                messagebox.showwarning("Jumlah Gambar Kosong", "Mohon masukkan jumlah gambar.")
+                return
+
+            popup.destroy()
+            self.is_updating = True
+            self.capture_images(count, delay)
+
+        # Tombol aksi
+        ctk.CTkButton(
+            content,
+            text="Capture",
+            font=("Arial", 14),
+            command=confirm_capture,
+            corner_radius=32,
+            height=30,
+            width=35).pack(pady=(20, 5))
+
+        # Handle saat popup ditutup manual
+        def on_close():
+            self.is_updating = True
+            popup.destroy()
+
+        popup.protocol("WM_DELETE_WINDOW", on_close)
+
+# ------------------------------------------------------
     def on_closing(self):
         """Lepaskan kamera dan keluar aplikasi."""
         if self.cap.isOpened():
